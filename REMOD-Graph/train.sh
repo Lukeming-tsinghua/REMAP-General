@@ -1,0 +1,26 @@
+python -u proposal.py  \
+    --do_train True\
+    --do_eval False\
+    --do_predict True\
+    --pred True\
+    --save_path ../pretrained-models/graph/\
+    --path /media/sdb1/Yucong/Dataset/i2b2/2010i2b2/processed_clean/ \
+    --valid_step 10 \
+    --feat_dim 100 \
+    --layer_num 1 \
+    --result ./result/  \
+    --name proposal-bce-i2b2\
+    --tokenizer allenai/scibert_scivocab_uncased \
+    --model allenai/scibert_scivocab_uncased  \
+    --maxLength 3  \
+    --trainBatchSize 128 \
+    --testBatchSize 512 \
+    --weightDecay 1e-5  \
+    --warmup_rate 0 \
+    --epoch 500  \
+    --lr 1e-3  \
+    --accumulate_step 1  \
+    --nworkers 8 \
+    --pinMemory True\
+    --cuda 0
+    #--path ../../Dataset/i2b2/2010i2b2/processed/ \

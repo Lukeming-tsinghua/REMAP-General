@@ -1,0 +1,23 @@
+python -u proposal.py  \
+    --do_train True\
+    --do_eval True\
+    --do_predict True\
+    --path /media/sdb1/Yucong/Dataset/newdata/processed/ \
+    --pred True\
+    --result ./result/  \
+    --name proposal-bce\
+    --tokenizer allenai/scibert_scivocab_uncased \
+    --text_model /media/sda1/RelationExtraction/REMOD-General/pretrained-models/text/scibert-epoch-29/ \
+    --graph_model /media/sda1/RelationExtraction/REMOD-General/pretrained-models/graph/epoch-290.pth \
+    --feat_dim 100 \
+    --maxLength 256  \
+    --trainBatchSize 8 \
+    --testBatchSize 16  \
+    --weightDecay 5e-7  \
+    --epoch 30  \
+    --lr 3e-5  \
+    --accumulate_step 4  \
+    --nworkers 4 \
+    --pinMemory True\
+    --distill True\
+    --cuda 1

@@ -1,0 +1,26 @@
+python -u proposal.py  \
+    --do_train False \
+    --do_eval True \
+    --do_predict True \
+    --train_pkl ../data/D2/train-token-term.jl  \
+    --valid_pkl ../data/D2/valid-token-term.jl  \
+    --pred True  \
+    --pred_pkl ../data/D2/EntityPairItems-disodiso-gold-500-token-term.jl  \
+    --result ./result/  \
+    --name proposal-bce \
+    --dict ../data/D2/cui2idx.pkl  \
+    --tokenizer allenai/scibert_scivocab_uncased \
+    --model pretrained-bert/scibert-epoch-19  \
+    --bceloss True\
+    --sampleNum 12  \
+    --maxLength 256  \
+    --testRate 0.2  \
+    --trainBatchSize 4 \
+    --testBatchSize 16  \
+    --weightDecay 1e-5  \
+    --epoch 1  \
+    --lr 1e-5  \
+    --accumulate_step 4  \
+    --nworkers 4  \
+    --pinMemory True \
+    --cuda 1

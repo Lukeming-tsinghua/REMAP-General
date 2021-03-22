@@ -1,0 +1,7 @@
+pretrained*/
+*/runs/*
+*/result/*
+
+*.pkl
+*.out
+__pycache__
