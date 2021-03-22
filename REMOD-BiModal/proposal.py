@@ -44,15 +44,20 @@ def train(train_loader,
     model.zero_grad()
 
     end = time.time()
-    for i, ((cui1, cui2, sentences, split, entity_1_begin_idxs,
+    for i, ((subnodes, head_ords, tail_ords, sentences, split, entity_1_begin_idxs,
              entity_2_begin_idxs), labels) in enumerate(train_loader):
 
         data_time.update(time.time() - end)
 
         sentences = {key: value.to(device) for key, value in sentences.items()}
+        subgraph, feature = graph.sample_subgraph(subnodes)
+        subgraph = [each.to(device) for each in subgraph]
+        feature = {key: value.to(device) for key, value in feature.items()}
         labels = labels.to(device)
 
-        score_text, score_graph = model(cui1, cui2, sentences, split, 
+        score_text, score_graph = model(subgraph, feature,
+                head_ords, tail_ords,
+                sentences, split, 
                 entity_1_begin_idxs,
                 entity_2_begin_idxs)
 
@@ -60,7 +65,8 @@ def train(train_loader,
         if len(criterion) == 2:
             score_mix = torch.cat((score_text.unsqueeze(-1), score_graph.unsqueeze(-1)), dim=-1)
             score_mix = score_mix.max(-1).values * one_hot_labels + score_mix.min(-1).values * (1 - one_hot_labels)
-            loss = criterion[0](score_text, one_hot_labels) + criterion[0](score_graph, one_hot_labels) + criterion[0](score_mix, one_hot_labels) + 0.5 * (criterion[1](score_text, score_mix) + criterion[1](score_graph, score_mix))
+            loss = criterion[0](score_text, one_hot_labels) + criterion[0](score_graph, one_hot_labels) + \
+                    criterion[0](score_mix, one_hot_labels) + 0.5 * (criterion[1](score_text, score_mix) + criterion[1](score_graph, score_mix))
         else:
             loss = criterion[0](score_text, one_hot_labels) + criterion[0](score_graph, one_hot_labels) 
 
@@ -121,16 +127,20 @@ def validate(
     with torch.no_grad():
         with tqdm(total=len(val_loader), ncols=50) as pbar:
             pbar.set_description("Validation iter:")
-            for i, ((cui1, cui2, sentences, split, entity_1_begin_idxs,
+            for i, ((subnodes, head_ords, tail_ords, sentences, split, entity_1_begin_idxs,
                      entity_2_begin_idxs), labels) in enumerate(val_loader):
 
                 sentences = {
                     key: value.to(device)
                     for key, value in sentences.items()
                 }
+                subgraph, feature = graph.sample_subgraph(subnodes)
+                subgraph = [each.to(device) for each in subgraph]
+                feature = {key: value.to(device) for key, value in feature.items()}
                 labels = labels.to(device)
 
-                score_text, score_graph = model(cui1, cui2, sentences, split, 
+                score_text, score_graph = model(subgraph, feature, head_ords, tail_ords,
+                        sentences, split, 
                         entity_1_begin_idxs,
                         entity_2_begin_idxs)
                 one_hot_labels = F.one_hot(labels, graph.relation_num).float()
@@ -169,7 +179,8 @@ if __name__ == "__main__":
     set_all_seed(args.seed)
 
     print("loading attribution info...")
-    graph = graph_reader(args.path)
+    graph = graph_reader(args.path, args.feat_dim,
+            layer_num=args.layer_num)
 
     print("loading dataset...")
     train_dataset = BertEntityPairDataset(
@@ -187,19 +198,20 @@ if __name__ == "__main__":
                                   num_workers=args.nworkers,
                                   pin_memory=args.pinMemory)
 
-    test_dataset = BertEntityPairDataset(
-        args.path,
-        "valid",
-        graph,
-        max_length=args.maxLength,
-        tokenizer=args.tokenizer)
+    if args.do_eval:
+        test_dataset = BertEntityPairDataset(
+            args.path,
+            "valid",
+            graph,
+            max_length=args.maxLength,
+            tokenizer=args.tokenizer)
 
-    test_dataloader = DataLoader(test_dataset,
-                                 batch_size=args.testBatchSize,
-                                 shuffle=False,
-                                 collate_fn=bert_collate_func,
-                                 num_workers=args.nworkers,
-                                 pin_memory=args.pinMemory)
+        test_dataloader = DataLoader(test_dataset,
+                                     batch_size=args.testBatchSize,
+                                     shuffle=False,
+                                     collate_fn=bert_collate_func,
+                                     num_workers=args.nworkers,
+                                     pin_memory=args.pinMemory)
 
     if args.pred:
         pred_dataset = BertEntityPairDataset(
@@ -218,11 +230,8 @@ if __name__ == "__main__":
 
     print("building model...")
     model = JointModel(args.text_model, 
-            graph.g.to(device), len(graph.node_dict), args.feat_dim, graph.relation_num).to(device)
+            graph.g, args.feat_dim, args.layer_num, graph.relation_num).to(device)
     model.text_encoder.resize_token_embeddings(len(train_dataset.tokenizer))
-
-    #if args.load_from_checkpoint is not None:
-    #    model.load_state_dict(torch.load(os.path.join(args.load_from_checkpoint, "model.pth")))
 
     graph_state_dict = torch.load(args.graph_model)
     missing_keys, unexpected_keys = model.load_state_dict(graph_state_dict, strict=False)

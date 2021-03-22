@@ -8,7 +8,7 @@ import torch.nn as nn
 import torch.nn.functional as F
 from torch.autograd import Variable
 from transformers import BertConfig, BertModel, BertPreTrainedModel
-from hetero_model import HeteroGAT
+from rgcn import RGCN
 
 
 LABEL_NUM = 4
@@ -61,27 +61,38 @@ class BertEncoder(BertPreTrainedModel):
         return self.__class__.__name__
 
 
-class GATEncoder(nn.Module):
-    def __init__(self, g, node_num, feat_dim):
+class GraphEncoderScore(nn.Module):
+    def __init__(self, 
+            g,
+            feat_dim,
+            layer_num,
+            output_dim=None):
         super().__init__()
+
         self.g = g
-        self.h = torch.nn.Parameter(torch.Tensor(node_num, feat_dim))
 
-        nn.init.xavier_uniform_(self.h, gain=1)
+        self.gnn = RGCN(g=g,
+                        h_dim=feat_dim,
+                        out_dim=100,
+                        dropout=0.3,
+                        num_hidden_layers=layer_num)
 
-    def forward(self, cui1, cui2):
-        return self.h[cui1,], self.h[cui2,]
-
+    def forward(self, subgraph, feature, heads_ord, tails_ord):
+        feature = self.gnn(feature, subgraph)
+        heads = torch.vstack([feature[t][idx] for t, idx in heads_ord])
+        tails = torch.vstack([feature[t][idx] for t, idx in tails_ord])
+        return heads, tails
+    
     def __repr__(self):
         return self.__class__.__name__
 
 
 class JointModel(nn.Module):
-    def __init__(self, config, g, node_num, feat_dim, output_dim=None):
+    def __init__(self, config, g, feat_dim, layer_num, output_dim=None):
         super().__init__()
 
         self.text_encoder = BertEncoder.from_pretrained(config)
-        self.graph_encoder = GATEncoder(g, node_num, feat_dim)
+        self.graph_encoder = GraphEncoderScore(g, feat_dim, layer_num, output_dim)
 
         self.relation_embedding = nn.Parameter(torch.Tensor(output_dim, 100))
         self.W_t = torch.nn.Parameter(torch.tensor(np.random.uniform(-1, 1, (100, 100, 100)), dtype=torch.float, requires_grad=True))
@@ -100,9 +111,10 @@ class JointModel(nn.Module):
         self.hidden_dropout1 = torch.nn.Dropout(0.5)
         self.hidden_dropout2 = torch.nn.Dropout(0.5)
 
-    def forward(self, cui1, cui2, tokens, split_points, entity_1_begin_idxs, entity_2_begin_idxs):
+    def forward(self, subgraph, feature, heads_ords, tails_ords,
+            tokens, split_points, entity_1_begin_idxs, entity_2_begin_idxs):
         h_text, t_text = self.text_encoder(tokens, split_points, entity_1_begin_idxs, entity_2_begin_idxs)
-        h_graph, t_graph = self.graph_encoder(cui1, cui2)
+        h_graph, t_graph = self.graph_encoder(subgraph, feature, heads_ords, tails_ords)
         score_text = self.score_function(h_text, t_text, self.W_t)
         score_graph = self.score_function(h_graph, t_graph, self.W_g)
         return score_text, score_graph

@@ -1,16 +1,17 @@
 python -u proposal.py  \
     --do_train True\
-    --do_eval True\
+    --do_eval False\
     --do_predict True\
-    --path /media/sdb1/Yucong/Dataset/newdata/processed/ \
+    --path ../data/2010i2b2-UMLS/ \
     --pred True\
     --result ./result/  \
     --name proposal-bce\
     --tokenizer allenai/scibert_scivocab_uncased \
-    --text_model /media/sda1/RelationExtraction/REMOD-General/pretrained-models/text/scibert-epoch-29/ \
-    --graph_model /media/sda1/RelationExtraction/REMOD-General/pretrained-models/graph/epoch-290.pth \
+    --text_model /media/sda1/RelationExtraction/REMOD-General/pretrained-models-i2b2/text/scibert-epoch-28/ \
+    --graph_model /media/sda1/RelationExtraction/REMOD-General/pretrained-models-i2b2/graph/GraphEncoderScore-epoch-490.pth \
     --feat_dim 100 \
-    --maxLength 256  \
+    --layer_num 1 \
+    --maxLength 512  \
     --trainBatchSize 8 \
     --testBatchSize 16  \
     --weightDecay 5e-7  \

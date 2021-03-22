@@ -8,40 +8,56 @@ from collections import defaultdict
 from transformers import AutoTokenizer
 
 import dgl
+import dgl.nn as dglnn
 import joblib
 import numpy as np
 import torch
+import torch.nn as nn
 from sklearn.model_selection import train_test_split
 from torch.utils.data import DataLoader, Dataset
-from torch.utils.data.sampler import BatchSampler, RandomSampler
+from torch.utils.data.sampler import BatchSampler, RandomSampler 
 from transformers import BertTokenizer
+
+from rgcn import RGCN
 
 
 class graph_reader:
     node_file = "node.csv"
     relation_file = "relation.csv"
     triplet_file = "triplet.csv"
-    def __init__(self, path, h=None):
-        self.node_dict, self.type_cnt = self.load_node(os.path.join(path, self.node_file))
+    def __init__(self, path, feat_dim=100, h=None, layer_num=1):
+        self.node_dict = self.load_node(os.path.join(path, self.node_file))
+        self.type_cnt = {key: len(self.node_dict[key]) for key in self.node_dict}
         self.relation_dict = self.load_relation(os.path.join(path, self.relation_file))
-        self.triplet, self.relation_cnt = self.load_triplet(os.path.join(path, self.triplet_file))
+        self.triplet = self.load_triplet(os.path.join(path, self.triplet_file))
 
         self.relation_num = len(self.relation_dict)
 
-        self.g = dgl.heterograph(self.triplet, {'NODE': len(self.node_dict)})
-        self.h = h
+        self.feat_dim = feat_dim
+
+        self.g = dgl.heterograph(self.triplet, self.type_cnt)
+
+        for key in self.type_cnt:
+            self.g.nodes[key].data["h"] = torch.rand(self.type_cnt[key], self.feat_dim)
+
+        self.layer_num = layer_num
+
+    def sample_subgraph(self, subnodes):
+        sampler = dgl.dataloading.MultiLayerFullNeighborSampler(self.layer_num)
+        subgraph = sampler.sample_blocks(self.g, subnodes)
+        feature = subgraph[0].srcdata["h"]
+        return subgraph, feature
 
     def load_node(self, path):
-        node = {}
-        type_cnt = defaultdict(lambda: 0)
+        node = defaultdict(list)
         with open(path) as f:
             line = f.readline()
             while line:
                 idx, name, t = line.replace("\n", "").split("\t")
-                node[(name, t)] = int(idx)
-                type_cnt[t] += 1
+                if name not in node[t]:
+                    node[t].append(name)
                 line = f.readline()
-        return node, type_cnt
+        return node
 
     def load_relation(self, path):
         relation = {}
@@ -55,26 +71,58 @@ class graph_reader:
 
     def load_triplet(self, path):
         triplet = defaultdict(list)
-        rel_cnt = defaultdict(lambda: 0)
         with open(path) as f:
             line = f.readline()
             while line:
                 h, typeh, r, t, typet = line.replace("\n", "").split("\t")
-                triplet[("NODE", "_".join([typeh, r, typet]), "NODE")].append((self.node_dict[(h, typeh)], self.node_dict[(t, typet)]))
-                rel_cnt[r] += 1
+                triplet[(typeh, r, typet)].append((self.node_dict[typeh].index(h), self.node_dict[typet].index(t)))
                 line = f.readline()
-        return triplet, rel_cnt
+        return triplet
+
+
+def grap_dict(heads, tails):
+    sub_dict = {}
+    head_ord = []
+    tail_ord = []
+    for t, idx in heads:
+        if t not in sub_dict:
+            sub_dict[t] = []
+        if idx not in sub_dict[t]:
+            sub_dict[t].append(idx)
+            head_ord.append((t, len(sub_dict[t])-1))
+        else:
+            head_ord.append((t, sub_dict[t].index(idx)))
+    for t, idx in tails:
+        if t not in sub_dict:
+            sub_dict[t] = []
+        if idx not in sub_dict[t]:
+            sub_dict[t].append(idx)
+            tail_ord.append((t, len(sub_dict[t])-1))
+        else:
+            tail_ord.append((t, sub_dict[t].index(idx)))
+    return sub_dict, head_ord, tail_ord
+
+
+def merge_nodes(*nodes):
+    merge = {}
+    for node in nodes:
+        for each in node:
+            if each in merge:
+                merge[each] += node[each]
+            else:
+                merge[each] = node[each]
+    return merge
 
 
 def bert_collate_func(arrays):
     sentences = {key: torch.cat([array[0][key] for array in arrays], 0) for key in arrays[0][0].keys()}
     split_points = np.cumsum([0] + [array[1] for array in arrays])
     labels = torch.LongTensor([array[2] for array in arrays])
-    heads = torch.LongTensor([array[3] for array in arrays])
-    tails = torch.LongTensor([array[4] for array in arrays])
+    subnodes, heads_ord, tails_ord = grap_dict([array[3] for array in arrays], [array[4] for array in arrays])
     entity_1_begin_idxs = [array[5] for array in arrays]
     entity_2_begin_idxs = [array[6] for array in arrays]
-    return (heads, tails, sentences, split_points, entity_1_begin_idxs, entity_2_begin_idxs),labels
+    return (subnodes, heads_ord, tails_ord,  
+            sentences, split_points, entity_1_begin_idxs, entity_2_begin_idxs),labels
 
 
 class BertEntityPairDataset(Dataset):
@@ -125,8 +173,8 @@ class BertEntityPairDataset(Dataset):
 
     def __getitem__(self, index):
         sample = self.data[index]
-        head = self.graph.node_dict[(sample["h"], sample["type_h"])]
-        tail = self.graph.node_dict[(sample["t"], sample["type_t"])]
+        head = (sample["type_h"], self.graph.node_dict[sample["type_h"]].index(sample["h"]))
+        tail = (sample["type_t"], self.graph.node_dict[sample["type_t"]].index(sample["t"]))
         text = sample["sentences"]
         text_tokenized = self.tokenizer.batch_encode_plus(
                 text,
@@ -148,9 +196,26 @@ class BertEntityPairDataset(Dataset):
 
 
 if __name__ == "__main__":
-    path = "../../i2b2/2010i2b2/processed/"
+    path = "/media/sdb1/Yucong/Dataset/i2b2/2010i2b2/processed_clean/"
     tokenizer = "allenai/scibert_scivocab_uncased"
     graph = graph_reader(path)
-    print(graph.relation_num)
-    dataset = BertEntityPairDataset(path=path,graph=graph,tokenizer=tokenizer, max_length=128, dataset="test")
-    print(dataset[0])
+    dataset = BertEntityPairDataset(path=path,graph=graph,tokenizer=tokenizer, max_length=128, dataset="train")
+    loader = DataLoader(dataset, batch_size=4, collate_fn=bert_collate_func)
+    g = graph.g
+
+    layer_num = 3
+    for (subnodes, heads_ord, tails_ord, *others), label in loader:
+        sampler = dgl.dataloading.MultiLayerFullNeighborSampler(layer_num)
+        subgraph = sampler.sample_blocks(g, subnodes)
+        model = RGCN(g=g, 
+                h_dim=10,
+                out_dim=10,
+                dropout=0.3,
+                num_hidden_layers=layer_num,
+                use_self_loop=True)
+        input_feature = subgraph[0].srcdata["h"]
+        output = model(input_feature, subgraph)
+        heads = torch.vstack([output[t][idx] for t, idx in heads_ord])
+        tails = torch.vstack([output[t][idx] for t, idx in tails_ord])
+        print(output, heads, tails)
+        break

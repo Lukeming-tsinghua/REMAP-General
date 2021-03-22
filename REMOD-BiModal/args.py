@@ -22,6 +22,9 @@ def get_args():
     parser.add_argument('--maxLength',
                         type=int,
                         help="max length of sentences in an entity pair")
+    parser.add_argument('--layer_num',
+                        type=int,
+                        help="layer num of gnn")
     parser.add_argument('--trainBatchSize',
                         type=int,
                         help="batchsize for training set")
