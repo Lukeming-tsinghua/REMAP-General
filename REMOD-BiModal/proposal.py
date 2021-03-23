@@ -233,7 +233,7 @@ if __name__ == "__main__":
             graph.g, args.feat_dim, args.layer_num, graph.relation_num).to(device)
     model.text_encoder.resize_token_embeddings(len(train_dataset.tokenizer))
 
-    graph_state_dict = torch.load(args.graph_model)
+    graph_state_dict = torch.load(args.graph_model, map_location=device)
     missing_keys, unexpected_keys = model.load_state_dict(graph_state_dict, strict=False)
     mapping_keys = [k for k in graph_state_dict if k not in unexpected_keys]
     print("model mapping keys:%s" % str(mapping_keys))

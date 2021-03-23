@@ -7,6 +7,8 @@ import dgl
 import dgl.nn as dglnn
 import tqdm
 
+from dgl.nn.pytorch.conv import SAGEConv
+
 class RelGraphConvLayer(nn.Module):
     r"""Relational graph convolution layer.
     Parameters
@@ -39,7 +41,7 @@ class RelGraphConvLayer(nn.Module):
                  weight=True,
                  bias=True,
                  activation=None,
-                 self_loop=False,
+                 self_loop=True,
                  dropout=0.0):
         super(RelGraphConvLayer, self).__init__()
         self.in_feat = in_feat
@@ -51,7 +53,7 @@ class RelGraphConvLayer(nn.Module):
         self.self_loop = self_loop
 
         self.conv = dglnn.HeteroGraphConv({
-                rel : dglnn.GraphConv(in_feat, out_feat, norm='right', weight=False, bias=False)
+                rel : SAGEConv(in_feat, out_feat, aggregator_type="mean", bias=False)
                 for rel in rel_names
             })
 

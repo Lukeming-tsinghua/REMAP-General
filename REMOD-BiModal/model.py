@@ -77,10 +77,10 @@ class GraphEncoderScore(nn.Module):
                         dropout=0.3,
                         num_hidden_layers=layer_num)
 
-    def forward(self, subgraph, feature, heads_ord, tails_ord):
+    def forward(self, subgraph, feature, head_ord, tail_ord):
         feature = self.gnn(feature, subgraph)
-        heads = torch.vstack([feature[t][idx] for t, idx in heads_ord])
-        tails = torch.vstack([feature[t][idx] for t, idx in tails_ord])
+        heads = torch.vstack([feature[t][idx] for t, idx in head_ord])
+        tails = torch.vstack([feature[t][idx] for t, idx in tail_ord])
         return heads, tails
     
     def __repr__(self):
@@ -111,10 +111,10 @@ class JointModel(nn.Module):
         self.hidden_dropout1 = torch.nn.Dropout(0.5)
         self.hidden_dropout2 = torch.nn.Dropout(0.5)
 
-    def forward(self, subgraph, feature, heads_ords, tails_ords,
+    def forward(self, subgraph, feature, heads_ord, tails_ord,
             tokens, split_points, entity_1_begin_idxs, entity_2_begin_idxs):
         h_text, t_text = self.text_encoder(tokens, split_points, entity_1_begin_idxs, entity_2_begin_idxs)
-        h_graph, t_graph = self.graph_encoder(subgraph, feature, heads_ords, tails_ords)
+        h_graph, t_graph = self.graph_encoder(subgraph, feature, heads_ord, tails_ord)
         score_text = self.score_function(h_text, t_text, self.W_t)
         score_graph = self.score_function(h_graph, t_graph, self.W_g)
         return score_text, score_graph

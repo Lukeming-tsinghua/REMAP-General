@@ -4,7 +4,7 @@ python -u proposal.py  \
     --do_predict True\
     --pred True\
     --save_path ../pretrained-models/graph/\
-    --path /media/sdb1/Yucong/Dataset/i2b2/2010i2b2/processed_clean/ \
+    --path ../data/2010i2b2-UMLS/ \
     --valid_step 10 \
     --feat_dim 100 \
     --layer_num 1 \
@@ -22,5 +22,4 @@ python -u proposal.py  \
     --accumulate_step 1  \
     --nworkers 8 \
     --pinMemory True\
-    --cuda 0
-    #--path ../../Dataset/i2b2/2010i2b2/processed/ \
+    --cuda 1
