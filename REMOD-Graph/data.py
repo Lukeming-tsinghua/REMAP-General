@@ -18,9 +18,6 @@ from torch.utils.data import DataLoader, Dataset
 from torch.utils.data.sampler import BatchSampler, RandomSampler 
 from transformers import BertTokenizer
 
-from hetero_model import HeteroGAT
-from rgcn import RGCN
-
 
 class graph_reader:
     node_file = "node.csv"
@@ -194,29 +191,3 @@ class BertEntityPairDataset(Dataset):
 
     def __len__(self):
         return len(self.data)
-
-
-if __name__ == "__main__":
-    path = "/media/sdb1/Yucong/Dataset/i2b2/2010i2b2/processed_clean/"
-    tokenizer = "allenai/scibert_scivocab_uncased"
-    graph = graph_reader(path)
-    dataset = BertEntityPairDataset(path=path,graph=graph,tokenizer=tokenizer, max_length=128, dataset="train")
-    loader = DataLoader(dataset, batch_size=4, collate_fn=bert_collate_func)
-    g = graph.g
-
-    layer_num = 3
-    for (subnodes, heads_ord, tails_ord, *others), label in loader:
-        sampler = dgl.dataloading.MultiLayerFullNeighborSampler(layer_num)
-        subgraph = sampler.sample_blocks(g, subnodes)
-        model = RGCN(g=g, 
-                h_dim=10,
-                out_dim=10,
-                dropout=0.3,
-                num_hidden_layers=layer_num,
-                use_self_loop=True)
-        input_feature = subgraph[0].srcdata["h"]
-        output = model(input_feature, subgraph)
-        heads = torch.vstack([output[t][idx] for t, idx in heads_ord])
-        tails = torch.vstack([output[t][idx] for t, idx in tails_ord])
-        print(output, heads, tails)
-        break

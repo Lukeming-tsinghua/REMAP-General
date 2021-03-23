@@ -109,10 +109,10 @@ class RelGraphConvLayer(nn.Module):
         hs = self.conv(g, inputs, mod_kwargs=wdict)
 
         def _apply(ntype, h):
-            if self.self_loop:
-                h = h + th.matmul(inputs_dst[ntype], self.loop_weight)
-            if self.bias:
-                h = h + self.h_bias
+            #if self.self_loop:
+            #    h = h + th.matmul(inputs_dst[ntype], self.loop_weight)
+            #if self.bias:
+            #    h = h + self.h_bias
             if self.activation:
                 h = self.activation(h)
             return self.dropout(h)

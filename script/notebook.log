@@ -1,0 +1,15 @@
+[I 17:02:45.584 NotebookApp] 启动notebooks 在本地路径: /media/sda1/RelationExtraction/REMOD-General/script
+[I 17:02:45.584 NotebookApp] 本程序运行在: http://166.111.224.7:20001/?token=0c4498c537dccb4b4e92b6ba3468a7d484f747a59cfd0299
+[I 17:02:45.584 NotebookApp]  or http://127.0.0.1:20001/?token=0c4498c537dccb4b4e92b6ba3468a7d484f747a59cfd0299
+[I 17:02:45.584 NotebookApp] 使用control-c停止此服务器并关闭所有内核(两次跳过确认).
+[C 17:02:45.587 NotebookApp] 
+    
+    To access the notebook, open this file in a browser:
+        file:///home/lyc/.local/share/jupyter/runtime/nbserver-35837-open.html
+    Or copy and paste one of these URLs:
+        http://166.111.224.7:20001/?token=0c4498c537dccb4b4e92b6ba3468a7d484f747a59cfd0299
+     or http://127.0.0.1:20001/?token=0c4498c537dccb4b4e92b6ba3468a7d484f747a59cfd0299
+[I 17:02:59.078 NotebookApp] 302 GET /?token=0c4498c537dccb4b4e92b6ba3468a7d484f747a59cfd0299 (58.251.37.183) 0.56ms
+[I 17:03:03.589 NotebookApp] Creating new notebook in 
+[I 17:03:04.883 NotebookApp] Kernel started: 2bf000ed-4323-4189-a716-ed9251a4c913
+[I 17:05:04.991 NotebookApp] Saving file at /data_description.ipynb

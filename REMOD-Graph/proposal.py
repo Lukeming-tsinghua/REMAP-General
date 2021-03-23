@@ -48,6 +48,8 @@ def train(train_loader,
 
         subgraph, feature = graph.sample_subgraph(subnodes)
         subgraph = [each.to(device) for each in subgraph]
+        if type(feature) != type(dict):
+            feature = {'type': feature}
         feature = {key: value.to(device) for key, value in feature.items()}
         labels = labels.to(device)
 
@@ -107,6 +109,8 @@ def validate(val_loader, model, criterion, epoch, summary, figure_writer,
 
                 subgraph, feature = graph.sample_subgraph(subnodes)
                 subgraph = [each.to(device) for each in subgraph]
+                if type(feature) != type(dict):
+                    feature = {'type': feature}
                 feature = {key: value.to(device) for key, value in feature.items()}
                 labels = labels.to(device)
 

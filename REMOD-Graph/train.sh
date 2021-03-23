@@ -1,15 +1,16 @@
+dataset=NYT-FB60K
 python -u proposal.py  \
     --do_train True\
     --do_eval False\
     --do_predict True\
     --pred True\
-    --save_path ../pretrained-models/graph/\
-    --path ../data/2010i2b2-UMLS/ \
+    --save_path ../pretrained-models/${dataset}/graph/\
+    --path ../data/${dataset}/ \
     --valid_step 10 \
     --feat_dim 100 \
     --layer_num 1 \
     --result ./result/  \
-    --name proposal-bce-i2b2\
+    --name proposal-bce-${dataset}\
     --tokenizer allenai/scibert_scivocab_uncased \
     --model allenai/scibert_scivocab_uncased  \
     --maxLength 3  \

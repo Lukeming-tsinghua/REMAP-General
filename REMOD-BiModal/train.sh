@@ -1,8 +1,8 @@
 python -u proposal.py  \
-    --do_train False\
+    --do_train True\
     --do_eval False\
     --do_predict True\
-    --path /media/sdb1/Yucong/Dataset/i2b2/2010i2b2/processed_clean/ \
+    --path ../data/2010i2b2-UMLS/ \
     --pred True\
     --result ./result/  \
     --name proposal-bce-i2b2\

@@ -9,7 +9,6 @@ import torch.nn.functional as F
 from torch.autograd import Variable
 
 import dgl
-from hetero_model import HeteroGAT, HeteroRGCN
 from rgcn import RGCN
 
 
